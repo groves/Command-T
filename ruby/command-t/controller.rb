@@ -152,13 +152,13 @@ module CommandT
     end
 
     def buffer_enter
-        buf = ::VIM::Buffer.current
-        # This should exclude CommandT's GoToFile buffer, but it doesn't. To work around that,
-        # list_matches excludes it on purpose
-        if ::VIM::evaluate('buflisted("%")')
-          @buffer_mru.delete(buf.number)
-          @buffer_mru.insert(0, buf.number)
-        end
+      buf = ::VIM::Buffer.current
+      # This should exclude CommandT's GoToFile buffer, but it doesn't. To work around that,
+      # list_matches excludes it on purpose
+      if ::VIM::evaluate("buflisted(#{buf.number})")
+        @buffer_mru.delete(buf.number)
+        @buffer_mru.insert(0, buf.number)
+      end
     end
 
   private

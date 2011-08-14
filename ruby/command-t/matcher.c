@@ -127,6 +127,13 @@ VALUE CommandTMatcher_sorted_matches_for(VALUE self, VALUE abbrev, VALUE baseSco
     return matches;
 }
 
+void evaluate_match(VALUE path, VALUE baseScore, VALUE abbrev, VALUE options, VALUE matches)
+{
+    VALUE match = rb_funcall(cCommandTMatch, rb_intern("new"), 3, path, abbrev, baseScore, options);
+    if (rb_funcall(match, rb_intern("matches?"), 0) == Qtrue)
+        rb_funcall(matches, rb_intern("push"), 1, match);
+}
+
 VALUE CommandTMatcher_matches_for(VALUE self, VALUE abbrev, VALUE baseScores)
 {
     if (NIL_P(abbrev))
@@ -147,14 +154,22 @@ VALUE CommandTMatcher_matches_for(VALUE self, VALUE abbrev, VALUE baseScores)
         rb_hash_aset(options, ID2SYM(rb_intern("never_show_dot_files")), never_show_dot_files);
     }
     abbrev = rb_funcall(abbrev, rb_intern("downcase"), 0);
+
+    // evaluate the scanner's paths
     VALUE paths = rb_funcall(scanner, rb_intern("paths"), 0);
     for (long i = 0, max = RARRAY_LEN(paths); i < max; i++)
     {
         VALUE path = RARRAY_PTR(paths)[i];
         VALUE baseScore = rb_hash_aref(baseScores, path);
-        VALUE match = rb_funcall(cCommandTMatch, rb_intern("new"), 3, path, abbrev, baseScore, options);
-        if (rb_funcall(match, rb_intern("matches?"), 0) == Qtrue)
-            rb_funcall(matches, rb_intern("push"), 1, match);
+        rb_hash_delete(baseScores, path);
+        evaluate_match(path, baseScore, abbrev, options, matches);
+    }
+
+    // check any base scores that didn't have paths
+    VALUE remaining_scores = rb_funcall(baseScores, rb_intern("to_a"), 0);
+    for (long i = 0, max = RARRAY_LEN(remaining_scores); i < max; i++) {
+        VALUE pathAndScore = RARRAY_PTR(remaining_scores)[i];
+        evaluate_match(RARRAY_PTR(pathAndScore)[0], RARRAY_PTR(pathAndScore)[1], abbrev, options, matches);
     }
     return matches;
 }
