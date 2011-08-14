@@ -48,5 +48,9 @@ module CommandT
     def path= path
       @scanner.path = path
     end
+
+    def bufferBased?
+      true
+    end
   end # class Finder
 end # CommandT

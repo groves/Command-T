@@ -321,15 +321,17 @@ module CommandT
     end
 
     def list_matches
-      # Start at the 3rd buffer number as the 1st is GoToFile and the 2nd is the current buffer
-      base_scores = @buffer_mru[2..@buffer_mru.length - 2].inject({}) {|base_scores, bufnr|
-          if ::VIM::evaluate("bufexists(#{bufnr})")
-              bufname = ::VIM::evaluate("bufname(#{bufnr})")
-              base_scores[bufname] = @buffer_mru.length - base_scores.length
-          end
-          base_scores
-      }
+      base_scores = {}
       base_scores.default = 0.0
+      if @active_finder.bufferBased?
+          # Start at the 3rd buffer number as the 1st is GoToFile and the 2nd is the current buffer
+          @buffer_mru[2..@buffer_mru.length - 2].each {|bufnr|
+              if ::VIM::evaluate("bufexists(#{bufnr})")
+                  bufname = ::VIM::evaluate("bufname(#{bufnr})")
+                  base_scores[bufname] = @buffer_mru.length - base_scores.length
+              end
+          }
+      end
       matches = @active_finder.sorted_matches_for @prompt.abbrev, base_scores, :limit => match_limit
       @match_window.matches = matches
     end
