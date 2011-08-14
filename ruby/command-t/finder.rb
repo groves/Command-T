@@ -37,8 +37,8 @@ module CommandT
 
     # Options:
     #   :limit (integer): limit the number of returned matches
-    def sorted_matches_for str, options = {}
-      @matcher.sorted_matches_for str, options
+    def sorted_matches_for str, baseScores, options = {}
+      @matcher.sorted_matches_for str, baseScores, options
     end
 
     def flush

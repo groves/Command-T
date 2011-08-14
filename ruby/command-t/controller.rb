@@ -34,6 +34,7 @@ module CommandT
     def initialize
       @prompt = Prompt.new
       @buffer_finder = CommandT::BufferFinder.new
+      @buffer_mru = []
       set_up_file_finder
       set_up_max_height
     end
@@ -148,6 +149,16 @@ module CommandT
 
     def unload
       @match_window.unload
+    end
+
+    def buffer_enter
+        buf = ::VIM::Buffer.current
+        # This should exclude CommandT's GoToFile buffer, but it doesn't. To work around that,
+        # list_matches excludes it on purpose
+        if ::VIM::evaluate('buflisted("%")')
+          @buffer_mru.delete(buf.number)
+          @buffer_mru.insert(0, buf.number)
+        end
     end
 
   private
@@ -310,7 +321,16 @@ module CommandT
     end
 
     def list_matches
-      matches = @active_finder.sorted_matches_for @prompt.abbrev, :limit => match_limit
+      # Start at the 3rd buffer number as the 1st is GoToFile and the 2nd is the current buffer
+      base_scores = @buffer_mru[2..@buffer_mru.length - 2].inject({}) {|base_scores, bufnr|
+          if ::VIM::evaluate("bufexists(#{bufnr})")
+              bufname = ::VIM::evaluate("bufname(#{bufnr})")
+              base_scores[bufname] = @buffer_mru.length - base_scores.length
+          end
+          base_scores
+      }
+      base_scores.default = 0.0
+      matches = @active_finder.sorted_matches_for @prompt.abbrev, base_scores, :limit => match_limit
       @match_window.matches = matches
     end
   end # class Controller

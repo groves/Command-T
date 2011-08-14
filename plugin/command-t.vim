@@ -138,6 +138,11 @@ function CommandTCursorStart()
   ruby $command_t.cursor_start
 endfunction
 
+augroup CommandT
+    autocmd!
+    autocmd BufWinEnter * ruby $command_t.buffer_enter
+augroup END
+
 ruby << EOF
   # require Ruby files
   begin

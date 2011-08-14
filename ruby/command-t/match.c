@@ -126,12 +126,12 @@ double recursive_match(matchinfo_t *m,  // sharable meta-data
     return (score > seen_score) ? score : seen_score;
 }
 
-// Match.new abbrev, string, options = {}
+// Match.new abbrev, string, baseScore, options = {}
 VALUE CommandTMatch_initialize(int argc, VALUE *argv, VALUE self)
 {
     // process arguments: 2 mandatory, 1 optional
-    VALUE str, abbrev, options;
-    if (rb_scan_args(argc, argv, "21", &str, &abbrev, &options) == 2)
+    VALUE str, baseScore, abbrev, options;
+    if (rb_scan_args(argc, argv, "31", &str, &abbrev, &baseScore, &options) == 3)
         options = Qnil;
     str             = StringValue(str);
     abbrev          = StringValue(abbrev); // already downcased by caller
@@ -170,6 +170,9 @@ VALUE CommandTMatch_initialize(int argc, VALUE *argv, VALUE self)
     }
     else // normal case
         score = recursive_match(&m, 0, 0, 0, 0.0);
+
+    if (score > 0) // Add the base score if it matched at all
+        score += NUM2DBL(baseScore);
 
     // clean-up and final book-keeping
     rb_iv_set(self, "@score", rb_float_new(score));

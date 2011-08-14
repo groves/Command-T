@@ -96,22 +96,17 @@ VALUE CommandTMatcher_initialize(int argc, VALUE *argv, VALUE self)
     return Qnil;
 }
 
-VALUE CommandTMatcher_sorted_matches_for(VALUE self, VALUE abbrev, VALUE options)
+VALUE CommandTMatcher_sorted_matches_for(VALUE self, VALUE abbrev, VALUE baseScores, VALUE options)
 {
     // process optional options hash
     VALUE limit_option = CommandT_option_from_hash("limit", options);
 
     // get unsorted matches
-    VALUE matches = CommandTMatcher_matches_for(self, abbrev);
-
     abbrev = StringValue(abbrev);
-    if (RSTRING_LEN(abbrev) == 0 ||
-        (RSTRING_LEN(abbrev) == 1 && RSTRING_PTR(abbrev)[0] == '.'))
-        // alphabetic order if search string is only "" or "."
-        qsort(RARRAY_PTR(matches), RARRAY_LEN(matches), sizeof(VALUE), comp_alpha);
-    else
-        // for all other non-empty search strings, sort by score
-        qsort(RARRAY_PTR(matches), RARRAY_LEN(matches), sizeof(VALUE), comp_score);
+    VALUE matches = CommandTMatcher_matches_for(self, abbrev, baseScores);
+
+    // sort by score
+    qsort(RARRAY_PTR(matches), RARRAY_LEN(matches), sizeof(VALUE), comp_score);
 
     // apply optional limit option
     long limit = NIL_P(limit_option) ? 0 : NUM2LONG(limit_option);
@@ -132,7 +127,7 @@ VALUE CommandTMatcher_sorted_matches_for(VALUE self, VALUE abbrev, VALUE options
     return matches;
 }
 
-VALUE CommandTMatcher_matches_for(VALUE self, VALUE abbrev)
+VALUE CommandTMatcher_matches_for(VALUE self, VALUE abbrev, VALUE baseScores)
 {
     if (NIL_P(abbrev))
         rb_raise(rb_eArgError, "nil abbrev");
@@ -156,7 +151,8 @@ VALUE CommandTMatcher_matches_for(VALUE self, VALUE abbrev)
     for (long i = 0, max = RARRAY_LEN(paths); i < max; i++)
     {
         VALUE path = RARRAY_PTR(paths)[i];
-        VALUE match = rb_funcall(cCommandTMatch, rb_intern("new"), 3, path, abbrev, options);
+        VALUE baseScore = rb_hash_aref(baseScores, path);
+        VALUE match = rb_funcall(cCommandTMatch, rb_intern("new"), 3, path, abbrev, baseScore, options);
         if (rb_funcall(match, rb_intern("matches?"), 0) == Qtrue)
             rb_funcall(matches, rb_intern("push"), 1, match);
     }
